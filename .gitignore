@@ -12,4 +12,4 @@ wheels/
 uv.lock
 
 # For LG Service menu script
-.aiopylgtv.sqlite
+.lg_service_menu_keys.json

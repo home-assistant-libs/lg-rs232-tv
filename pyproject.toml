@@ -26,6 +26,7 @@ classifiers = [
 
 [project.optional-dependencies]
 esphome = ["serialx[esphome]>=0.8.0"]
+remote = ["aiowebostv>=0.7.4"]
 
 [project.scripts]
 lg-tv-rs232 = "lg_tv_rs232.__main__:main"

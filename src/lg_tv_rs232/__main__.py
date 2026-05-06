@@ -6,6 +6,7 @@ Usage:
     python -m lg_tv_rs232 'esphome://192.168.1.29/?port_name=TTL'
     python -m lg_tv_rs232 /dev/ttyUSB0 --set-id 2
     python -m lg_tv_rs232 /dev/ttyUSB0 --power on
+    python -m lg_tv_rs232 service-menu              # webOS service menu (needs [remote] extra)
 """
 
 from __future__ import annotations
@@ -234,6 +235,18 @@ async def _run(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "service-menu":
+        try:
+            from .remote import main as remote_main
+        except ImportError:
+            print(
+                "Error: the 'service-menu' command requires the 'remote' extra. "
+                "Install with: pip install 'lg-tv-rs232[remote]'",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        sys.exit(remote_main(sys.argv[2:], prog="python -m lg_tv_rs232 service-menu"))
+
     parser = argparse.ArgumentParser(
         description="Test an LG TV over RS232",
     )

@@ -1,30 +1,33 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "bscpylgtv==0.5.1",
-# ]
-# ///
 """Open the InStart / EzAdjust service menu on an LG webOS TV.
 
-First run will prompt on the TV to accept pairing — accept it; the client key
-is stored in ~/.aiopylgtv.sqlite for future runs. Default access code is 0413.
+Requires the ``remote`` extra::
 
-Usage:
-    uv run scripts/lg_service_menu.py                   # auto-discover, InStart
-    uv run scripts/lg_service_menu.py 192.168.1.42
-    uv run scripts/lg_service_menu.py --menu ezAdjust   # service menu 1
+    pip install lg-tv-rs232[remote]
+
+First run will prompt on the TV to accept pairing — accept it; the client key
+is stored in ``./.lg_service_menu_keys.json`` (cwd) for future runs. Default
+access code is 0413.
+
+CLI usage::
+
+    python -m lg_tv_rs232 service-menu                  # auto-discover, InStart
+    python -m lg_tv_rs232 service-menu 192.168.1.42
+    python -m lg_tv_rs232 service-menu --menu ezAdjust  # service menu 1
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import socket
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
-from bscpylgtv import WebOsClient
+from aiowebostv import WebOsClient
+
+KEYS_PATH = Path(".lg_service_menu_keys.json")
 
 SSDP_ADDR = "239.255.255.250"
 SSDP_PORT = 1900
@@ -86,10 +89,29 @@ async def enter_code(client: WebOsClient, code: str) -> None:
         await asyncio.sleep(0.15)
 
 
+def load_keys(path: Path = KEYS_PATH) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_key(ip: str, client_key: str, path: Path = KEYS_PATH) -> None:
+    keys = load_keys(path)
+    if keys.get(ip) == client_key:
+        return
+    keys[ip] = client_key
+    path.write_text(json.dumps(keys, indent=2))
+
+
 async def run(ip: str, ir_key: str, code: str | None) -> None:
-    client = await WebOsClient.create(ip, ping_interval=None)
+    client = WebOsClient(ip, load_keys().get(ip))
     try:
         await client.connect()
+        if client.client_key:
+            save_key(ip, client.client_key)
         result = await open_service_menu(client, ir_key)
         print(f"launch result: {result}", file=sys.stderr)
         if code:
@@ -115,8 +137,8 @@ def resolve_ip(arg: str | None) -> str:
     sys.exit(1)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+def main(argv: list[str] | None = None, prog: str | None = None) -> int:
+    parser = argparse.ArgumentParser(prog=prog, description=__doc__)
     parser.add_argument("ip", nargs="?", help="TV IP address (auto-discover if omitted)")
     parser.add_argument(
         "--menu",
@@ -129,7 +151,7 @@ def main() -> int:
         default="0413",
         help="Access code to type after the menu opens (default: 0413, '' to skip)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     asyncio.run(run(resolve_ip(args.ip), args.menu, args.code))
     return 0
 
