@@ -2,7 +2,7 @@
 
 Requires the ``remote`` extra::
 
-    pip install lg-tv-rs232[remote]
+    pip install lg-rs232-tv[remote]
 
 First run will prompt on the TV to accept pairing — accept it; the client key
 is stored in ``./.lg_service_menu_keys.json`` (cwd) for future runs. Default

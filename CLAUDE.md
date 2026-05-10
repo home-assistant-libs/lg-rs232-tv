@@ -1,4 +1,4 @@
-# lg-tv-rs232
+# lg-rs232-tv
 
 Async Python library to control LG TVs over RS232 serial.
 

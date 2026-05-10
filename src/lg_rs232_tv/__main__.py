@@ -247,7 +247,7 @@ def main() -> None:
         except ImportError:
             print(
                 "Error: the 'service-menu' command requires the 'remote' extra. "
-                "Install with: pip install 'lg-tv-rs232[remote]'",
+                "Install with: pip install 'lg-rs232-tv[remote]'",
                 file=sys.stderr,
             )
             sys.exit(1)

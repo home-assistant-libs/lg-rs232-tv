@@ -1,4 +1,4 @@
-# lg-tv-rs232
+# lg-rs232-tv
 
 Async Python library to control LG TVs over RS232 serial, built on
 [serialx](https://github.com/puddly/serialx).
@@ -6,10 +6,10 @@ Async Python library to control LG TVs over RS232 serial, built on
 ## Installation
 
 ```bash
-pip install lg-tv-rs232
+pip install lg-rs232-tv
 
 # To talk to a TV over an ESPHome serial proxy:
-pip install 'lg-tv-rs232[esphome]'
+pip install 'lg-rs232-tv[esphome]'
 ```
 
 Requires Python 3.12+.
