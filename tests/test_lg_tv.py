@@ -95,3 +95,19 @@ async def test_query_notifies_subscribers_once(tv, mock_serial) -> None:
     assert len(received) == 1  # one batched notification, not one per attribute
     await tv.query(["volume", "input_source", "aspect_ratio"])
     assert len(received) == 1  # nothing changed, so no extra notification
+
+
+async def test_query_clears_unanswered_attributes(tv, mock_serial) -> None:
+    await tv.query(["volume", "balance"])
+    assert tv.state.volume == 30
+    assert tv.state.balance == 50
+
+    # The TV stops answering the balance query (e.g. audio routed to optical).
+    mock_serial.responses["kt 01 ff"] = "NG:ff"
+    received: list = []
+    tv.subscribe(received.append)
+    await tv.query(["volume", "balance"])
+
+    assert tv.state.volume == 30  # still answered, unchanged
+    assert tv.state.balance is None  # stale value cleared
+    assert received[-1].balance is None

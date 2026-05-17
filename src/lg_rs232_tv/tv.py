@@ -169,9 +169,13 @@ class LGTV:
         Subscriber notifications are suppressed while the queries run and
         fired once at the end if any value changed.
 
-        Queries are issued sequentially; each one that times out or returns
-        NG is silently skipped (different LG models support different
-        subsets of commands).
+        Queries are issued sequentially. An attribute the TV does not answer
+        -- because it timed out or was rejected with NG -- is set to ``None``,
+        so the state reflects the TV's latest answer rather than a stale
+        value. Different LG models support different subsets of commands, and
+        some attributes are only available depending on the TV's configuration
+        (for example, volume-related commands when audio is routed to the TV
+        speaker).
         """
         wanted = set(attributes)
         self._batching = True
@@ -184,11 +188,14 @@ class LGTV:
                     await self._query(command1, command2)
                 except (TimeoutError, CommandRejected) as err:
                     _LOGGER.debug(
-                        "Skipping %s%s during state query: %s",
+                        "Clearing %s (%s%s) during query: %s",
+                        attr,
                         command1,
                         command2,
                         err,
                     )
+                    if self._set_state(attr, None):
+                        self._batch_changed = True
         finally:
             self._batching = False
 
