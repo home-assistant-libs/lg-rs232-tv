@@ -43,6 +43,17 @@ _LOGGER = logging.getLogger(__name__)
 
 StateCallback = Callable[[TVState | None], None]
 
+
+class TVNotRespondingError(ConnectionError):
+    """Raised when the serial port opened but no LG TV responded.
+
+    The serial connection itself succeeded, but the TV did not return a valid
+    reply to the power query during ``connect()`` -- e.g. RS-232C control is
+    disabled, the TV is off, the set ID is wrong, or the cable is miswired.
+    Subclasses ``ConnectionError`` so it can be distinguished from a transport
+    failure (the port itself being unreachable).
+    """
+
 # Each entry maps a (command1, command2) pair. The response is identified by
 # command2 alone (the LG protocol does not echo command1).
 _QUERY_DATA = "ff"
@@ -139,7 +150,7 @@ class LGTV:
             await self.query_power()
         except TimeoutError:
             await self.disconnect()
-            raise ConnectionError(
+            raise TVNotRespondingError(
                 f"No response from LG TV on {self._port}: the TV did not "
                 "reply to a power query within "
                 f"{COMMAND_TIMEOUT}s. Check that the TV is on the bus, the "
@@ -148,7 +159,7 @@ class LGTV:
             ) from None
         except CommandRejected as err:
             await self.disconnect()
-            raise ConnectionError(
+            raise TVNotRespondingError(
                 f"LG TV on {self._port} responded with NG to power query: {err}"
             ) from None
 

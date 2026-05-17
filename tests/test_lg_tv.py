@@ -2,18 +2,40 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
+import pytest
+
 from lg_rs232_tv import (
     AspectRatio,
     InputSource,
+    LGTV,
     PowerState,
     RemoteKey,
     ScreenMute,
+    TVNotRespondingError,
 )
 
 
 async def test_connect_queries_power(tv) -> None:
     assert tv.connected
     assert tv.state.power is PowerState.ON
+
+
+async def test_connect_raises_when_tv_does_not_respond(mock_serial) -> None:
+    """connect() raises TVNotRespondingError when no LG TV answers the bus."""
+    # The port opens, but the power query is rejected (no working LG TV).
+    mock_serial.responses["ka 01 ff"] = "NG:ff"
+    tv = LGTV("/dev/ttyUSB0")
+
+    async def fake_open(*args, **kwargs):
+        return mock_serial.reader, mock_serial.writer
+
+    with patch(
+        "lg_rs232_tv.tv.serialx.open_serial_connection", side_effect=fake_open
+    ):
+        with pytest.raises(TVNotRespondingError):
+            await tv.connect()
 
 
 async def test_query_state_populates_everything(tv) -> None:
