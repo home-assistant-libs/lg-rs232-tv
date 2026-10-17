@@ -6,6 +6,7 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
+import serialx
 from conftest import DEFAULT_RESPONSES, MockSerialConnection
 
 from lg_rs232_tv import (
@@ -349,3 +350,30 @@ async def test_unsubscribe_twice_is_noop(tv, mock_serial) -> None:
     mock_serial.responses["ka 01 00"] = "00"
     await tv.power_off()
     assert received == []
+
+
+async def test_connect_serial_exception_allows_retry(mock_serial) -> None:
+    """An unavailable serial port is a connection failure and can be retried."""
+    device = LGTV("esphome://proxy.local/?port_name=RS232")
+    error = serialx.SerialException("Serial proxy is unavailable")
+    mock_serial.responses["ka 01 ff"] = "01"
+
+    with patch(
+        "lg_rs232_tv.tv.serialx.open_serial_connection",
+        side_effect=[error, (mock_serial.reader, mock_serial.writer)],
+    ) as open_connection:
+        with pytest.raises(
+            LGTVConnectionError, match="Serial proxy is unavailable"
+        ) as exc_info:
+            await device.connect()
+
+        assert exc_info.value.__cause__ is error
+        assert not device.connected
+        mock_serial.writer.write.assert_not_called()
+
+        try:
+            await device.connect()
+            assert device.connected
+            assert open_connection.await_count == 2
+        finally:
+            await device.disconnect()
