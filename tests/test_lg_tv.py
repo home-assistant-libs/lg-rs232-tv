@@ -222,6 +222,25 @@ async def test_query_clears_unanswered_attributes(tv, mock_serial) -> None:
     assert received[-1].balance is None
 
 
+async def test_query_keeps_power_on_timeout(tv, mock_serial) -> None:
+    received: list = []
+    tv.subscribe(received.append)
+
+    # The TV drops the reply to the power query.
+    mock_serial.responses.pop("ka 01 ff")
+    await tv.query(["power"])
+
+    assert tv.state.power is PowerState.ON
+    assert received == []
+
+
+async def test_query_clears_power_on_ng(tv, mock_serial) -> None:
+    mock_serial.responses["ka 01 ff"] = "NG:ff"
+    await tv.query(["power"])
+
+    assert tv.state.power is None
+
+
 async def _connect(tv: LGTV, mock_serial: MockSerialConnection) -> None:
     async def fake_open(*args, **kwargs):
         return mock_serial.reader, mock_serial.writer
