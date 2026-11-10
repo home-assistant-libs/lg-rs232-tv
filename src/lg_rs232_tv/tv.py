@@ -227,6 +227,10 @@ class LGTV:
         some attributes are only available depending on the TV's configuration
         (for example, volume-related commands when audio is routed to the TV
         speaker).
+
+        Power is the exception for timeouts: every model answers the power
+        query, so a timeout means a dropped reply (for example while the TV
+        boots) and ``power`` keeps its last known value.
         """
         wanted = set(attributes)
         self._batching = True
@@ -238,6 +242,9 @@ class LGTV:
                 try:
                     await self._query(command1, command2)
                 except (TimeoutError, CommandRejected) as err:
+                    if attr == "power" and isinstance(err, TimeoutError):
+                        _LOGGER.debug("Keeping power, query timed out")
+                        continue
                     _LOGGER.debug(
                         "Clearing %s (%s%s) during query: %s",
                         attr,
